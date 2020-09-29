@@ -247,7 +247,6 @@ describe API::V2::Market::Orders, type: :request do
     it 'creates a buy order' do
       member.get_account(:usd).update_attributes(balance: 100_000)
       AMQP::Queue.expects(:enqueue).with(:order_processor, is_a(Hash), is_a(Hash))
-      AMQP::Queue.expects(:enqueue).with(:events_processor, is_a(Hash))
 
       expect do
         api_post '/api/v2/market/orders', token: token, params: { market: 'btcusd', side: 'buy', volume: '12.13', price: '2014' }
@@ -415,9 +414,7 @@ describe API::V2::Market::Orders, type: :request do
 
       it 'should cancel specified order by id' do
         AMQP::Queue.expects(:enqueue).with(:matching, action: 'cancel', order: order.to_matching_attributes)
-        AMQP::Queue.expects(:enqueue).with(:events_processor,
-                                         subject: :stop_order,
-                                         payload: order.as_json_for_events_processor)
+
         expect do
           api_post "/api/v2/market/orders/#{order.id}/cancel", token: token
           expect(response).to be_successful
@@ -427,9 +424,7 @@ describe API::V2::Market::Orders, type: :request do
 
       it 'should cancel specified order by uuid' do
         AMQP::Queue.expects(:enqueue).with(:matching, action: 'cancel', order: order.to_matching_attributes)
-        AMQP::Queue.expects(:enqueue).with(:events_processor,
-                                           subject: :stop_order,
-                                           payload: order.as_json_for_events_processor)
+
         expect do
           api_post "/api/v2/market/orders/#{order.uuid}/cancel", token: token
           expect(response).to be_successful
@@ -460,9 +455,7 @@ describe API::V2::Market::Orders, type: :request do
     it 'should cancel all my orders' do
       member.orders.each do |o|
         AMQP::Queue.expects(:enqueue).with(:matching, action: 'cancel', order: o.to_matching_attributes)
-        AMQP::Queue.expects(:enqueue).with(:events_processor,
-                                         subject: :stop_order,
-                                         payload: o.as_json_for_events_processor)
+
       end
 
       expect do
@@ -477,9 +470,6 @@ describe API::V2::Market::Orders, type: :request do
     it 'should cancel all my orders for specific market' do
       member.orders.where(market: 'btceth').each do |o|
         AMQP::Queue.expects(:enqueue).with(:matching, action: 'cancel', order: o.to_matching_attributes)
-        AMQP::Queue.expects(:enqueue).with(:events_processor,
-                                         subject: :stop_order,
-                                         payload: o.as_json_for_events_processor)
       end
 
       expect do
@@ -494,9 +484,6 @@ describe API::V2::Market::Orders, type: :request do
     it 'should cancel all my asks' do
       member.orders.where(type: 'OrderAsk').each do |o|
         AMQP::Queue.expects(:enqueue).with(:matching, action: 'cancel', order: o.to_matching_attributes)
-        AMQP::Queue.expects(:enqueue).with(:events_processor,
-                                         subject: :stop_order,
-                                         payload: o.as_json_for_events_processor)
       end
 
       expect do
